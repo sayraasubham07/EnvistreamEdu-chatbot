@@ -8,7 +8,7 @@ const icon2 = '/suu3.webp';
 
 import { useNavigate } from 'react-router-dom';
 
-import { useAuth } from '../lib/AuthContext';
+import { useAuth } from '../../lib/AuthContext';
 
 const Main = () => {
   const navigate = useNavigate();
@@ -28,10 +28,6 @@ const Main = () => {
         console.error("Login Error:", err);
       }
     }
-  };
-
-  const handleVideoConsultClick = () => {
-    navigate('/video-consultation');
   };
 
 
@@ -77,10 +73,10 @@ const Main = () => {
               </div>
               <div className="col-md-6 order-1 order-md-2 text-center">
                 <h1 className="header">
-                  <b>Meet</b> <span className="sayraaText">Sayraa</span>, <br />
-                  <b>Your Smart Health Care AI Assistant</b>
+                  <b>Meet</b> <span className="sayraaText">Sayraa</span> — <br />
+                  <b>Your AI Guide to Learning, Internships & Careers</b>
                 </h1>
-                <p className="content-text">Sayraa stands for Smart Universal User Support & Resource Integration, providing intelligent healthcare guidance, symptom analysis, and wellness support.</p>
+                <p className="content-text">Sayraa is your intelligent AI learning companion for courses, skills, internships, projects, and career growth.</p>
                 <button className="button-69" role="button" onClick={handleChatNowClick}>
                   <span className="text">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
@@ -102,13 +98,13 @@ const Main = () => {
               <div className="col-md-6 order-1 order-md-1 text-center">
                 <h1 className="header">
                   <b>Your</b> <span className="sayraaText">Personalized</span> <br />
-                  <b>Healthcare Intelligence</b>
+                  <b>EduSkill Intelligence</b>
                 </h1>
-                <p className="content-text">Sayraa is designed to provide proactive health tracking, analyze your symptoms, and enhance your medical awareness with precise, reliable, and empathetic AI responses.</p>
-                <button className="button-69" role="button" onClick={handleVideoConsultClick}>
+                <p className="content-text">Sayraa is designed to guide your learning journey, recommend skill-building internships, and accelerate your career growth with precise, reliable, and intelligent AI mentorship.</p>
+                <button className="button-69" role="button" onClick={handleChatNowClick}>
                   <span className="text">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
-                    <b style={{ marginLeft: "8px" }}>VIDEO CONSULT</b>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    <b>CHAT NOW</b>
                   </span>
                 </button>
               </div>
@@ -143,10 +139,10 @@ const Main = () => {
               </div>
               <div className="col-md-6 order-1 order-md-2 text-center">
                 <h1 className="header">
-                  <b>Discover</b> <span className="sayraaText">Wellness</span>, <br />
-                  <b>Smart Diagnostics</b>
+                  <b>Discover</b> <span className="sayraaText">Learning</span>, <br />
+                  <b>Unlock Opportunities</b>
                 </h1>
-                <p className="content-text">With cutting-edge medical AI, Sayraa empowers you with accurate symptom analysis, smart health suggestions, and meaningful clinical insights.</p>
+                <p className="content-text">With cutting-edge educational AI, Sayraa empowers you with customized learning roadmaps, curated internship opportunities, and actionable career insights.</p>
                 <button className="button-69" role="button" onClick={handleChatNowClick}>
                   <span className="text">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
@@ -170,9 +166,9 @@ const Main = () => {
             <h2 className="header mb-5">Why Choose Sayraa?</h2>
             <div className="row">
               {[
-                { title: "Instant Triage", desc: "Immediate symptom analysis powered by clinical AI algorithms." },
-                { title: "Medical Context", desc: "Engaging, health-aware conversations that prioritize your well-being." },
-                { title: "Personalized Care", desc: "Tailored wellness suggestions that understand your unique health profile." }
+                { title: "Expert-Led Courses", desc: "Training in Software Testing, Web Development, SAP, AI & more by top MNC mentors." },
+                { title: "Real Internships", desc: "AICTE/BPUT-compliant internship programs with live project experience." },
+                { title: "Placement Support", desc: "Mock interviews, HR preparation and campus placement assistance." }
               ].map((feature, idx) => (
                 <div className="col-md-4" key={idx}>
                   <motion.div

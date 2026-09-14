@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Main from "./Main";
+import Main from "../landing/Main";
 import Navbar from './Navbar';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Footer from "./Footer";

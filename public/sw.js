@@ -1,10 +1,10 @@
 /* eslint-disable no-restricted-globals */
 
 // Cache configuration with versioning
-const CACHE_VERSION = 'sayraa-cache-v6';
-const STATIC_CACHE = `${CACHE_VERSION}-static`;
-const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
-const FLASH_IMAGE = '/suu4.png';
+const CACHE_VERSION = 'sayraa-cache-v7';
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
+const FLASH_IMAGE = '/suu-icon-512.png';
 
 // Assets to cache for offline access
 const STATIC_ASSETS = [
@@ -135,12 +135,12 @@ self.addEventListener('push', (event) => {
     data = event.data.json();
   }
 
-  const title = data.title || 'Sayraa';
-  const options = {
-    body: data.body || 'New update from Sayraa!',
-    icon: '/suu4.png',
-    badge: '/suu4.png',
-    image: FLASH_IMAGE,
+const title = data.title || 'Sayraa';
+  const options = {
+    body: data.body || 'New update from Sayraa!',
+    icon: '/suu-icon-192.png',
+    badge: '/suu-icon-192.png',
+    image: FLASH_IMAGE,
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/',

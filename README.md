@@ -1,7 +1,7 @@
-# 🌸 Sayraa — AI Healthcare Assistant
-
-> A multilingual, voice-enabled AI health companion built with React, Groq LLM, Firebase, and PWA support — designed to make healthcare guidance accessible in Odia, Hindi, and English.
-
+# 🎓 Sayraa — Envistream EduSkill AI Chatbot
+
+
+> A multilingual, voice-enabled AI education companion built with React, Groq LLM, Firebase, and PWA support — designed to provide course, internship, and career guidance in Odia, Hindi, and English.
 ---
 
 ## 📋 Table of Contents
@@ -22,12 +22,12 @@
 - [License](#license)
 
 ---
-
-## Overview
-
-**Sayraa** (from *Sayraa*, a respectful/affectionate address) is a full-stack AI healthcare assistant that provides health guidance in a conversational, voice-enabled interface. It leverages Groq's ultra-fast Llama inference to respond in natural Odia, Hindi, and English, making healthcare information more accessible to regional users in India.
-
-The app is built as a Progressive Web App (PWA), so users can install it on their devices for an app-like experience without visiting an app store.
+## Overview
+
+
+**Sayraa** is a full-stack AI education chatbot that provides course, internship, and career guidance in a conversational, voice-enabled interface. It leverages Groq's ultra-fast Llama inference to respond in natural Odia, Hindi, and English, making Envistream EduSkill's programs accessible to regional users in India.
+
+The app is built as a Progressive Web App (PWA), so users can install it on their devices for an app-like experience without visiting an app store.
 
 ---
 
@@ -198,7 +198,15 @@ Copy `.env.example` to `.env` and fill in your values:
 # Required — get a free key at https://console.groq.com/keys
 VITE_GROQ_API_KEY=your_groq_api_key_here
 
-# Optional — override the default model
+# Optional — override the default model
+# VITE_GROQ_MODEL=llama-3.1-8b-instant
+
+# Optional — AI Speech-to-Text: makes the mic understand Hinglish perfectly
+# and keeps "Envistream EduSkill" correct at any speaking speed.
+# Get a FREE key at https://aistudio.google.com/apikey
+VITE_GEMINI_API_KEY=
+# Optional — Gemini model for transcription (free model by default)
+# VITE_GEMINI_MODEL=gemini-3.6-flash
 MODEL_ID=llama-3.1-8b-instant
 
 # Firebase config (from your Firebase project settings)

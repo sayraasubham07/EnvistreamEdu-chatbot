@@ -1,25 +1,15 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 
 import { AuthProvider } from './lib/AuthContext';
 import ErrorBoundary from './lib/ErrorBoundary';
-import LoadingSkeleton from './components/LoadingSkeleton';
 import './App.css';
 
-import Welcome from './components/Welcome';
-import Main from './components/Main';
+import Welcome from './components/layout/Welcome';
+import Main from './components/landing/Main';
 
-// Lazy load other components for better performance (code splitting)
-const Chat = lazy(() => import('./components/Main/Chat'));
-const Profile = lazy(() => import('./components/Profile/Profile'));
-const VideoConsultation = lazy(() => import('./components/Main/VideoConsultation'));
-
-// Loading fallback component
-const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 to-purple-900">
-    <LoadingSkeleton type="welcome" />
-  </div>
-);
+import Chat from './components/chat/Chat';
+import Profile from './components/profile/Profile';
 
 const App = () => {
   return (
@@ -27,15 +17,12 @@ const App = () => {
       <AuthProvider>
         <Router>
           <div className="App">
-            <Suspense fallback={<LoadingFallback />}>
-              <Routes>
-                <Route path="/" element={<Welcome />} />
-                <Route path="/main" element={<Main />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/video-consultation" element={<VideoConsultation />} />
-              </Routes>
-            </Suspense>
+            <Routes>
+              <Route path="/" element={<Welcome />} />
+              <Route path="/main" element={<Main />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/profile" element={<Profile />} />
+            </Routes>
           </div>
         </Router>
       </AuthProvider>

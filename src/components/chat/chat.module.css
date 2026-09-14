@@ -30,14 +30,13 @@
 }
 
 .avatar {
-  width: 56px;
-  height: 56px;
+  height: 54px;
+  width: 54px;
   flex-shrink: 0;
-  border-radius: 50%;
   margin-right: 15px;
   object-fit: cover;
-  border: 2.5px solid #6366f1;
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   transition: transform 0.3s ease;
 }
 
@@ -68,10 +67,9 @@
   }
 
   .avatar {
-    width: 42px;
     height: 42px;
+    width: 42px;
     margin-right: 10px;
-    border-width: 2px;
   }
 
   .headerTitle {
@@ -224,14 +222,14 @@
   position: relative;
 }
 
-.smileyIcon, .attachmentIcon {
+.smileyIcon {
   cursor: pointer;
   font-size: 20px;
   margin-right: 10px;
 }
 
 @media (max-width: 480px) {
-  .smileyIcon, .attachmentIcon {
+  .smileyIcon {
     font-size: 16px;
     margin-right: 6px;
   }
@@ -275,6 +273,48 @@
   border: none;
   cursor: pointer;
   font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transition: all 0.25s ease-in-out;
+}
+
+.micButton:hover {
+  background-color: rgba(99, 102, 241, 0.12);
+  transform: scale(1.08);
+}
+
+.micButtonListening {
+  background: linear-gradient(135deg, #ff0055, #7928ca, #0070f3) !important;
+  background-size: 200% 200% !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(255, 0, 85, 0.8), 0 0 30px rgba(121, 40, 202, 0.6), 0 0 45px rgba(0, 112, 243, 0.4) !important;
+  animation: micPulseGlow 1.5s infinite ease-in-out, gradientShift 3s ease infinite !important;
+  transform: scale(1.15);
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes micPulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.8), 0 0 15px rgba(121, 40, 202, 0.7);
+    transform: scale(1.08);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(255, 0, 85, 0), 0 0 32px rgba(0, 112, 243, 0.9);
+    transform: scale(1.22);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 85, 0), 0 0 15px rgba(121, 40, 202, 0.7);
+    transform: scale(1.08);
+  }
 }
 
 @media (max-width: 480px) {
@@ -285,6 +325,8 @@
 
   .sendButton, .micButton {
     font-size: 16px;
+    width: 34px;
+    height: 34px;
   }
 
   .inputWrapper {

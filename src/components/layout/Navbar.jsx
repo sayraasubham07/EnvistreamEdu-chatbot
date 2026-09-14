@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import 'bootstrap/dist/css/bootstrap.min.css';
-import './Main.css';
+import './Navbar.css';
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../lib/AuthContext";
+import { useAuth } from "../../lib/AuthContext";
 
 export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
@@ -75,18 +75,11 @@ export default function Navbar() {
             )}
             <nav className={`navbar navbar-expand-lg sticky-top ${scrolled ? 'scrolled' : ''}`}>
                 <div className="container d-flex justify-content-between align-items-center">
-                    <a className="navbar-brand" href="/"><b>Sayraa</b></a>
+                    <a className="navbar-brand" href="/">
+                        <img src="/envistream-logo.png" alt="Envistream EduSkill Logo" className="navbar-logo" />
+                    </a>
                     
                     <div className="d-flex align-items-center gap-3">
-                        {/* Quick Video Consult Button for Mobile/Desktop */}
-                        <button 
-                            onClick={() => navigate('/video-consultation')}
-                            className="btn btn-sm d-flex align-items-center"
-                            style={{ background: 'linear-gradient(90deg, #6366f1, #a855f7)', color: 'white', borderRadius: '20px', padding: '5px 12px', border: 'none', fontWeight: 'bold', fontSize: '0.85rem' }}
-                        >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px' }}><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> <span>Consult</span>
-                        </button>
-
                         <div className="nav-profile-wrapper" ref={dropdownRef}>
                             <div className="nav-profile" onClick={handleProfileClick}>
                             {user && user.picture ? (
@@ -115,8 +108,8 @@ export default function Navbar() {
                                     <span className="dropdown-user-email">{user.email}</span>
                                 </div>
                                 <hr className="dropdown-divider" />
-                                <button className="dropdown-item" onClick={() => { setShowDropdown(false); navigate('/video-consultation'); }}>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', color: '#007bff' }}><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> Video Consult
+                                <button className="dropdown-item" onClick={() => { setShowDropdown(false); navigate('/chat'); }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', color: '#007bff' }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> Chat
                                 </button>
                                 <button className="dropdown-item" onClick={handleGoToProfile}>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', color: '#17a2b8' }}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Profile
