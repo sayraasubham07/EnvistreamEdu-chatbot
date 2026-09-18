@@ -126,7 +126,11 @@ export const AuthProvider = ({ children }) => {
             } else if (error.code === 'auth/operation-not-allowed') {
                 setAuthError('Google sign-in is not enabled. Please contact the administrator.');
             } else if (error.code === 'auth/unauthorized-domain') {
-                setAuthError('This domain is not authorized for OAuth operations.');
+                const currentDomain = window.location.hostname;
+                setAuthError(
+                    `Domain "${currentDomain}" is not authorized for OAuth. ` +
+                    `Please add it to Firebase Console > Authentication > Settings > Authorized domains.`
+                );
             } else {
                 setAuthError(error.message);
             }
