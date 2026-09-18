@@ -31,8 +31,8 @@ export default async function handler(req, res) {
   const cleanMime = (mimeType || 'audio/webm').split(';')[0].trim() || 'audio/webm';
 
   const candidateModels = [
-    'gemini-3.1-flash-lite',
     'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
     'gemini-flash-lite-latest',
   ];
 
