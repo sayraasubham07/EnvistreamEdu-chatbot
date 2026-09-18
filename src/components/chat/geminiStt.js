@@ -33,7 +33,7 @@ Real examples of the user asking:
 "courses kya provide karte ho"
 `;
 
-export const isGeminiSTTAvailable = () => !!GEMINI_API_KEY;
+export const isGeminiSTTAvailable = () => true;
 
 // The modern mic APIs (MediaRecorder / FileReader) only exist in new browsers
 export const cloudMediaSupported = () =>
@@ -144,6 +144,21 @@ export const transcribeWithGemini = async (blob) => {
   const rawMime = blob.type || "audio/webm";
   // Gemini requires clean MIME types without codec parameters (e.g. 'audio/webm' instead of 'audio/webm;codecs=opus')
   const mimeType = rawMime.split(";")[0].trim() || "audio/webm";
+
+  // 1. Try secure serverless /api/stt first (API key is kept 100% private)
+  try {
+    const res = await fetch("/api/stt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mimeType, data }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.text || "";
+    }
+  } catch (_) {
+    // serverless route unavailable, try direct fallback
+  }
 
   const call = async (model) => {
     const url =

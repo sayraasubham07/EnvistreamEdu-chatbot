@@ -717,53 +717,79 @@ const Chat = () => {
         },
       ];
 
-      // Call Gemini API with automatic model quota fallback
-      const chatCandidateModels = [
-        "gemini-3.1-flash-lite",
-        "gemini-3.5-flash-lite",
-        "gemini-flash-lite-latest",
-      ];
-
       let aiText = "";
       let lastChatError = "";
 
-      for (const model of chatCandidateModels) {
-        try {
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                systemInstruction: {
-                  parts: [{ text: `${medConfig.systemMessage}\n\n${languageInstruction}` }],
-                },
-                contents: geminiContents,
-                generationConfig: {
-                  temperature: 0.7,
-                  maxOutputTokens: 350,
-                  thinkingConfig: { thinkingBudget: 0 },
-                },
-              }),
-            }
-          );
+      // 1. Try secure serverless /api/chat first (API key is kept 100% private)
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            systemInstruction: `${medConfig.systemMessage}\n\n${languageInstruction}`,
+            contents: geminiContents,
+          }),
+        });
 
-          if (response.ok) {
-            const data = await response.json();
-            aiText = data.candidates?.[0]?.content?.parts
-              ?.map((p) => p.text || "")
-              .join("")
-              .trim();
-            if (aiText) break;
-          } else {
-            const errorText = await response.text();
-            lastChatError = `${response.status} - ${errorText}`;
-            console.warn(`Chat model "${model}" returned ${response.status} — trying next model...`);
+        if (response.ok) {
+          const data = await response.json();
+          aiText = (data.text || "").trim();
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          lastChatError = errData.error || `${response.status} - ${response.statusText}`;
+        }
+      } catch (e) {
+        lastChatError = e?.message || String(e);
+      }
+
+      // 2. Fallback to direct client-side call if /api/chat failed and GEMINI_API_KEY is present
+      if (!aiText && GEMINI_API_KEY) {
+        const chatCandidateModels = [
+          "gemini-3.1-flash-lite",
+          "gemini-3.5-flash-lite",
+          "gemini-flash-lite-latest",
+        ];
+
+        for (const model of chatCandidateModels) {
+          try {
+            const response = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  systemInstruction: {
+                    parts: [{ text: `${medConfig.systemMessage}\n\n${languageInstruction}` }],
+                  },
+                  contents: geminiContents,
+                  generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 350,
+                    thinkingConfig: { thinkingBudget: 0 },
+                  },
+                }),
+              }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              aiText = data.candidates?.[0]?.content?.parts
+                ?.map((p) => p.text || "")
+                .join("")
+                .trim();
+              if (aiText) break;
+            } else {
+              const errorText = await response.text();
+              lastChatError = `${response.status} - ${errorText}`;
+              console.warn(`Chat model "${model}" returned ${response.status} — trying next model...`);
+            }
+          } catch (e) {
+            console.warn(`Network error with model "${model}":`, e);
           }
-        } catch (e) {
-          console.warn(`Network error with model "${model}":`, e);
         }
       }
 
