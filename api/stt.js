@@ -34,6 +34,7 @@ export default async function handler(req, res) {
     'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite',
     'gemini-flash-lite-latest',
+    'gemini-3.5-flash',
   ];
 
   let lastError = '';
@@ -58,7 +59,6 @@ export default async function handler(req, res) {
             generationConfig: {
               temperature: 0,
               maxOutputTokens: 1000,
-              thinkingConfig: { thinkingBudget: 0 },
             },
           }),
         }

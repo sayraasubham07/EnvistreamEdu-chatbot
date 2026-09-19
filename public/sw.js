@@ -1,15 +1,13 @@
 /* eslint-disable no-restricted-globals */
 
 // Cache configuration with versioning
-const CACHE_VERSION = 'sayraa-cache-v8';
+const CACHE_VERSION = 'sayraa-cache-v9';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 const FLASH_IMAGE = '/suu-icon-512.png';
 
 // Assets to cache for offline access (strictly unique items)
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   FLASH_IMAGE,
   '/manifest.json',
   '/suu-icon-192.png',
@@ -60,7 +58,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - Stale-While-Revalidate strategy
+// Fetch event
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -75,11 +73,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For same-origin requests, use Stale-While-Revalidate
+  // Never intercept /api/ routes so live chat/STT calls reach the server directly
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  // For HTML / Navigation requests: ALWAYS Network First
+  // This prevents serving stale index.html which causes old bundle execution on first visit
+  if (
+    request.mode === 'navigate' ||
+    request.destination === 'document' ||
+    request.headers.get('accept')?.includes('text/html')
+  ) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // For same-origin static assets, use Stale-While-Revalidate
   if (url.origin === location.origin) {
     event.respondWith(staleWhileRevalidate(request));
   } else {
-    // For cross-origin requests (like API calls), use Network First
+    // For cross-origin requests, use Network First
     event.respondWith(networkFirst(request));
   }
 });
@@ -102,8 +116,8 @@ async function staleWhileRevalidate(request) {
       return cachedResponse;
     }
     // Fallback for navigation requests
-    if (request.mode === 'navigate') {
-      const fallback = await caches.match('/index.html');
+    if (request.mode === 'navigate' || request.destination === 'document') {
+      const fallback = await caches.match('/index.html') || await caches.match('/');
       if (fallback) return fallback;
     }
     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
@@ -127,8 +141,8 @@ async function networkFirst(request) {
     if (cachedResponse) {
       return cachedResponse;
     }
-    if (request.mode === 'navigate') {
-      const fallback = await caches.match('/index.html');
+    if (request.mode === 'navigate' || request.destination === 'document') {
+      const fallback = await caches.match('/index.html') || await caches.match('/');
       if (fallback) return fallback;
     }
     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });

@@ -179,7 +179,6 @@ export const transcribeWithGemini = async (blob) => {
         generationConfig: {
           temperature: 0,
           maxOutputTokens: 1000,
-          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     });
@@ -198,9 +197,10 @@ export const transcribeWithGemini = async (blob) => {
 
   // If the initial model fails, retry with verified active models
   const candidateModels = [
-    "gemini-3.1-flash-lite",
     "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
     "gemini-flash-lite-latest",
+    "gemini-3.5-flash",
   ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
   let lastStatus = 0;
