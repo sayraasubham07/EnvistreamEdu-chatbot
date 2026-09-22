@@ -16,21 +16,30 @@ export default async function handler(req, res) {
 
   const candidateModels = [
     'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
     'gemini-flash-lite-latest',
-    'gemini-3.5-flash',
+    'gemini-3.8-flash',
     'gemini-3.6-flash',
+    'gemini-3.5-flash',
   ];
 
   let lastError = '';
+  const chainStart = Date.now();
 
   for (const model of candidateModels) {
+    // Client only waits ~7s for us — if the chain has already spent 4s,
+    // answer immediately instead of outliving the client's timeout.
+    if (Date.now() - chainStart > 4000) break;
+    // Per-model timeout so one hanging model can't stall the whole chain
+    // (this was the main cause of slow / failed replies).
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4500);
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             systemInstruction: systemInstruction
               ? { parts: [{ text: systemInstruction }] }
@@ -38,7 +47,13 @@ export default async function handler(req, res) {
             contents,
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 350,
+              maxOutputTokens: 250,
+              // Lite models are NON-thinking models — sending thinkingConfig makes
+              // them return 400 INVALID_ARGUMENT (verified against the live API).
+              // For thinking-capable models, no thinking = much faster answers.
+              ...(/lite/i.test(model)
+                ? {}
+                : { thinkingConfig: { thinkingBudget: 0 } }),
             },
           }),
         }
@@ -59,6 +74,8 @@ export default async function handler(req, res) {
       }
     } catch (e) {
       lastError = e?.message || String(e);
+    } finally {
+      clearTimeout(timer);
     }
   }
 

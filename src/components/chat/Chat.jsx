@@ -7,11 +7,7 @@ import chatBg from "../../assets/img/chat_bg.webp";
 import { fixPhonetics } from "./phoneticFixes";
 import { isGeminiSTTAvailable, cloudMediaSupported, startCloudRecording, stopCloudRecording, transcribeWithGemini } from "./geminiStt";
 
-// Pick the clearest available Hindi voice (female preferred) for TTS.
-// Ranked so high-quality "Natural"/"Online"/Google voices win over the
-// legacy robotic SAPI voices (e.g. Microsoft Hemant) that Chrome/Edge
-// otherwise return first — that legacy fallback is what made the female
-// voice sound unclear.
+
 const getSweetHindiVoice = (synth) => {
   const voices = synth.getVoices().filter(
     (v) =>
@@ -32,6 +28,51 @@ const getSweetHindiVoice = (synth) => {
     if (n.includes("female") || v.gender === "female") s += 4;
     // Legacy robotic male voices — deprioritise (last-resort only)
     if (n.includes("hemant") || n.includes("madhur")) s -= 5;
+    return s;
+  };
+
+  return voices.sort((a, b) => score(b) - score(a))[0];
+};
+
+
+const getSweetEnglishVoice = (synth) => {
+  const voices = synth.getVoices().filter(
+    (v) =>
+      v.lang === "en-US" ||
+      v.lang === "en-GB" ||
+      (v.lang && v.lang.startsWith("en"))
+  );
+  if (!voices.length) return null;
+
+  const isKnownFemale = (n) =>
+    n.includes("female") ||
+    n.includes("zira") || n.includes("samantha") ||
+    n.includes("aria") || n.includes("jenny") || n.includes("michelle") ||
+    n.includes("ava") || n.includes("emma") || n.includes("natasha") ||
+    n.includes("sonia") || n.includes("libby") || n.includes("humaira") ||
+    n.includes("microsoft anna") ||
+    n.includes("microsoft helen") || n.includes("microsoft hazel") ||
+    n.includes("microsoft susan") || n.includes("microsoft tifaine") ||
+    n.includes("google us english") || n.includes("google uk english") ||
+    n.includes("google en");
+
+  const score = (v) => {
+    const n = v.name.toLowerCase();
+    let s = 0;
+    // High-quality neural/online voices are far clearer than legacy SAPI ones
+    if (n.includes("natural") || n.includes("online")) s += 8;
+    if (n.includes("google")) s += 6;
+    // Known sweet FEMALE voices (Google female, Microsoft neural female, classic female)
+    if (isKnownFemale(n) || v.gender === "female") s += 5;
+    // Prefer en-US over other English variants for consistency
+    if (v.lang === "en-US") s += 2;
+    // Legacy robotic MALE voices — deprioritise (last-resort only)
+    if (n.includes("david") || n.includes("henry") || n.includes("mark") ||
+        n.includes("guy") || n.includes("ryan") || n.includes("eric") ||
+        n.includes("gordon") || n.includes("benjamin") || n.includes("william") ||
+        n.includes("andrew") || n.includes("brian") || n.includes("jonathan") ||
+        n.includes("steven") || (n.includes("male") && !n.includes("female")) ||
+        (n.includes("microsoft") && !isKnownFemale(n))) s -= 5;
     return s;
   };
 
@@ -63,12 +104,7 @@ const playListenTone = () => {
   }
 };
 
-// ---- Devanagari → English letters (Hinglish) transliteration ----
-// The browser recognizer ("hi-IN") writes Hinglish speech in Devanagari
-// (e.g. "कोर्सेज क्या प्रोवाइड करते हो"). The chat should show/send it in
-// English letters ("korsej kya provaaid karte ho"), so we transliterate it
-// ourselves. This keeps recognition accurate while always displaying
-// Hinglish text.
+
 const INDIC_CONSONANTS = {
   // Devanagari (Hindi)
   "क": "k", "ख": "kh", "ग": "g", "घ": "gh", "ङ": "n",
@@ -140,12 +176,12 @@ const toEnglishLetters = (text) => {
   dropInherentA(); // word ends at end of string
   return out;
 };
-// ---- End transliteration ----
 
-// ---- Hinglish-only language rule ----
-// Sayraa ALWAYS replies in Hinglish (Hindi written in English/Roman letters),
-// no matter which language the user uses.
-const HINGLISH_LANGUAGE_INSTRUCTION = `IMPORTANT LANGUAGE RULE: ALWAYS reply in HINGLISH — Hindi written in English (Roman) letters, e.g. 'aap kaise ho', 'main aapki kya madad kar sakti hoon'. NEVER use Devanagari script and NEVER reply in pure English — even if the user writes in pure English or Hindi (Devanagari). Understand both English and Hindi inputs, but your reply must ALWAYS be Hinglish written in English letters only.`;
+const ADAPTIVE_LANGUAGE_INSTRUCTION = `IMPORTANT LANGUAGE RULE — reply in the SAME language the user used:
+- If the user's message is in ENGLISH (English words, English grammar), reply in PURE ENGLISH.
+- If the user's message is in HINGLISH (Hindi words written in Roman/English letters, e.g. "kya haal hai", "courses kya provide karte ho"), reply in HINGLISH ONLY — Hindi in Roman letters, never Devanagari.
+- Detect the language from the user's actual message text and match it. Do NOT force Hinglish when the user wrote English, and do NOT reply in English when the user wrote Hinglish.
+- Always answer in the same language as the latest user message in the conversation.`;
 
 const GEMINI_API_KEY =
   typeof process !== "undefined" && process.env
@@ -179,8 +215,46 @@ const Chat = () => {
   // unreliable in Chrome — after the first use it often silently stops
   // recognizing speech (this was the bug where the mic heard nothing).
 
-  // Speak a reply in Hinglish with the clearest Hindi female voice.
-  const speakText = useCallback((text) => {
+  // ---- Voices ready promise ----
+  // Chrome loads speech voices asynchronously — getVoices() often returns []
+  // on first call. We wait for the onvoiceschanged event (or a short timeout)
+  // so getSweetEnglishVoice / getSweetHindiVoice always see a populated list.
+  // NOTE: declared BEFORE speakText because speakText lists it as a dependency.
+  const voicesReadyRef = useRef(null);
+  const waitForVoices = useCallback(() => {
+    if (voicesReadyRef.current) return voicesReadyRef.current;
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      voicesReadyRef.current = Promise.resolve();
+      return voicesReadyRef.current;
+    }
+    // If voices are already populated, resolve immediately
+    if (synth.getVoices().length > 0) {
+      voicesReadyRef.current = Promise.resolve();
+      return voicesReadyRef.current;
+    }
+    voicesReadyRef.current = new Promise((resolve) => {
+      const onVoicesChanged = () => {
+        if (synth.getVoices().length > 0) {
+          synth.removeEventListener("voiceschanged", onVoicesChanged);
+          // Give the browser a tick to finish populating
+          setTimeout(resolve, 50);
+        }
+      };
+      synth.addEventListener("voiceschanged", onVoicesChanged);
+      // Safety timeout: if voices never load, resolve anyway after 3s
+      setTimeout(() => {
+        synth.removeEventListener("voiceschanged", onVoicesChanged);
+        resolve();
+      }, 3000);
+    });
+    return voicesReadyRef.current;
+  }, []);
+
+  // Speak a reply. Accepts an optional `lang` param ("en" | "hi") so the
+  // welcome message can be spoken in English while Hinglish replies keep the
+  // sweet Hindi female voice.
+  const speakText = useCallback(async (text, lang = "hi") => {
     if (typeof window === 'undefined') return;
 
     const synth = window.speechSynthesis;
@@ -188,7 +262,7 @@ const Chat = () => {
       console.warn("Speech synthesis not available.");
       return;
     }
-    // Cancel any ongoing speech immediately to avoid delays
+    // Cancel any ongoing speech immediately
     synth.cancel();
 
     // Keep emojis on screen, but NEVER read them aloud ("smiling face" etc.)
@@ -202,22 +276,54 @@ const Chat = () => {
       .trim();
     if (!spokenText) return;
 
-    const utterance = new SpeechSynthesisUtterance(spokenText);
-    utterance.lang = "hi-IN";
-    utterance.rate = 1;    // normal pace — clear & natural
-    utterance.pitch = 1.2; // mildly feminine without sounding muffled
+    // Wait for voices to be loaded so our voice picker sees a populated list.
+    // This fixes the bug where the default (often male) voice was used because
+    // getVoices() returned [] at speak time.
+    await waitForVoices();
 
-    const hindiVoice = getSweetHindiVoice(synth);
-    if (hindiVoice) {
-      utterance.voice = hindiVoice;
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+
+    if (lang === "en") {
+      // English greeting/replies use the SAME sweet female voice as the
+      // Hinglish replies (Google/Microsoft Hindi female — Swara/Kalpana/
+      // Google हिन्दी) speaking the English text exactly as written (the
+      // text stays pure English — never Hinglish). Those Hindi female voices
+      // pronounce English words with a warm Indian accent, which is exactly
+      // what makes the Hinglish greeting sound so sweet. Same rate/pitch as
+      // the Hinglish branch for an identical tone. Only if no Hindi voice
+      // exists do we fall back to the ranked English female picker (never male).
+      utterance.rate = 1;    // original "previous" pace — clear & natural
+      utterance.pitch = 1.2; // original "previous" sweet feminine tone
+      utterance.lang = "en-US";
+
+      const sweetVoice = getSweetHindiVoice(synth) || getSweetEnglishVoice(synth);
+      if (sweetVoice) {
+        utterance.voice = sweetVoice;
+        utterance.lang = sweetVoice.lang || "en-US";
+      } else {
+        console.warn("No preferred female voice found, using default en-US voice.");
+      }
     } else {
-      console.warn("Hindi female voice not found, using default hi-IN voice.");
+      // Hinglish reply — use the clearest Hindi female voice
+      utterance.lang = "hi-IN";
+      utterance.rate = 1;    // normal pace — clear & natural (original setting)
+      utterance.pitch = 1.2; // mildly feminine without sounding muffled (original setting)
+
+      const hindiVoice = getSweetHindiVoice(synth);
+      if (hindiVoice) {
+        utterance.voice = hindiVoice;
+      } else {
+        console.warn("Hindi female voice not found, using default hi-IN voice.");
+      }
     }
 
+    // Chrome can stutter or drop words when speak() fires in the same tick
+    // as a previous cancel() — give the engine one beat before speaking.
+    await new Promise((r) => setTimeout(r, 150));
     synth.speak(utterance);
-  }, []);
+  }, [waitForVoices]);
 
-  // Load messages from localStorage on mount
+  // Load messages from localStorage on mount + detect voices
   useEffect(() => {
     const savedMessages = localStorage.getItem("sayraaMessages");
     if (savedMessages) {
@@ -226,11 +332,23 @@ const Chat = () => {
 
     const synth = window.speechSynthesis;
     if (synth) {
+      // Pre-warm: if voices already available, resolve the promise
+      if (synth.getVoices().length > 0) {
+        if (!voicesReadyRef.current) {
+          voicesReadyRef.current = Promise.resolve();
+        }
+      }
       synth.onvoiceschanged = () => {
-        console.log("Voices loaded:", synth.getVoices());
+        console.log("Voices loaded:", synth.getVoices().map(v => `${v.name} (${v.lang})`));
       };
     }
+  }, []);
 
+  // Stop all speech/audio when the chat unmounts (page change, clear, etc.)
+  useEffect(() => () => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   }, []);
 
   const medConfig = {
@@ -254,7 +372,7 @@ const Chat = () => {
     systemMessage: `Act as Sayraa, a smart and friendly AI learning guide at Envistream EduSkill (an IT training and internship institute in Bhubaneswar, Odisha).
 
       CORE BEHAVIOR RULES:
-      1. LANGUAGE: ALWAYS respond in natural HINGLISH (Hindi written in English/Roman alphabet) — never in pure English and never in Devanagari script.
+      1. LANGUAGE: Sayraa detects whether the user is writing in English or Hinglish (Hindi in Roman letters) and replies in the SAME language. The language rule is injected per-message by the client — do NOT force any single language here.
       2. BRANDING & NO SALES CTAs (CRITICAL):
          - In the FIRST reply/interaction of the chat, mention "Envistream EduSkill" naturally (e.g., "Envistream EduSkill mein...").
          - In SUBSEQUENT chat messages, it is NOT necessary to repeat "Envistream EduSkill" in every chat! Speak naturally using "hum", "hamare yahan", or answer directly without repeating the brand name every time.
@@ -296,7 +414,7 @@ const Chat = () => {
   };
 
   useEffect(() => {
-    const welcomeText = "Namaste! Mein hoon Sayraa, Envistream EduSkill ka chatbot. Courses, training aur internships ke baare mein poochho! 😊";
+    const welcomeText = "Hello! I'm Sayraa, the AI assistant of Envistream EduSkill. Ask me about courses, training, internships, projects, placements, or career guidance! 😊";
     const initialMessages = [{
       text: welcomeText,
       sender: "ai",
@@ -312,12 +430,13 @@ const Chat = () => {
     ];
     setConversationHistory(initialHistory);
 
-    const hindiWelcome = "नमस्ते! मैं हूँ सायरा, Envistream EduSkill का चैटबॉट। कोर्स, ट्रेनिंग और इंटर्नशिप के बारे में पूछो! 😊";
+    // Speak the welcome message in English (chat opens in English)
+    const englishWelcome = "Hello! I'm Sayraa, the AI assistant of Envistream EduSkill. Ask me about courses, training, internships, projects, placements, or career guidance!";
     // Speak the welcome only ONCE — React.StrictMode runs effects twice in
     // dev, which would otherwise speak it twice
     if (!welcomeSpokenRef.current) {
       welcomeSpokenRef.current = true;
-      speakText(hindiWelcome);
+      speakText(englishWelcome, "en");
     }
   }, [speakText]);
 
@@ -709,8 +828,8 @@ const Chat = () => {
 
     try {
 
-      // Sayraa ALWAYS replies in Hinglish — no per-message language branching
-      const languageInstruction = HINGLISH_LANGUAGE_INSTRUCTION;
+      // Sayraa replies in the SAME language as the user (English ↔ Hinglish)
+      const languageInstruction = ADAPTIVE_LANGUAGE_INSTRUCTION;
 
       // Build contents array for Gemini API
       const geminiContents = [
@@ -726,80 +845,144 @@ const Chat = () => {
 
       let aiText = "";
       let lastChatError = "";
+      let serverError = "";
+      let directError = "";
+      const deadlineStart = Date.now();
+      const timeLeft = () => 15000 - (Date.now() - deadlineStart); // global cap: nothing waits longer than 15s total
 
-      // 1. Try secure serverless /api/chat first (API key is kept 100% private)
-      try {
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            systemInstruction: `${medConfig.systemMessage}\n\n${languageInstruction}`,
-            contents: geminiContents,
-          }),
-        });
+      // 1. Serverless /api/chat and the direct Gemini call run CONCURRENTLY —
+      // the first successful answer wins. Running them in parallel (instead of
+      // one after the other) removes the stacked-wait delay that made replies
+      // feel slow; each side has its own short timeout so a hang can't pile up.
+      const serverPromise = (async () => {
+        try {
+          const chatController = new AbortController();
+          const chatTimeout = setTimeout(() => chatController.abort(), Math.min(7000, timeLeft()));
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            signal: chatController.signal,
+            body: JSON.stringify({
+              systemInstruction: `${medConfig.systemMessage}\n\n${languageInstruction}`,
+              contents: geminiContents,
+            }),
+          });
+          clearTimeout(chatTimeout);
 
-        if (response.ok) {
-          const data = await response.json();
-          aiText = (data.text || "").trim();
-        } else {
-          const errData = await response.json().catch(() => ({}));
-          lastChatError = errData.error || `${response.status} - ${response.statusText}`;
-        }
-      } catch (e) {
-        lastChatError = e?.message || String(e);
-      }
-
-      // 2. Fallback to direct client-side call if /api/chat failed and GEMINI_API_KEY is present
-      if (!aiText && GEMINI_API_KEY) {
-        const chatCandidateModels = [
-          "gemini-3.5-flash-lite",
-          "gemini-3.1-flash-lite",
-          "gemini-flash-lite-latest",
-          "gemini-3.5-flash",
-          "gemini-3.6-flash",
-        ];
-
-        for (const model of chatCandidateModels) {
-          try {
-            const response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  systemInstruction: {
-                    parts: [{ text: `${medConfig.systemMessage}\n\n${languageInstruction}` }],
-                  },
-                  contents: geminiContents,
-                  generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 350,
-                  },
-                }),
-              }
-            );
-
-            if (response.ok) {
-              const data = await response.json();
-              aiText = data.candidates?.[0]?.content?.parts
-                ?.map((p) => p.text || "")
-                .join("")
-                .trim();
-              if (aiText) break;
-            } else {
-              const errorText = await response.text();
-              lastChatError = `${response.status} - ${errorText}`;
-              console.warn(`Chat model "${model}" returned ${response.status} — trying next model...`);
-            }
-          } catch (e) {
-            console.warn(`Network error with model "${model}":`, e);
+          if (response.ok) {
+            const data = await response.json();
+            return (data.text || "").trim();
           }
+          const errData = await response.json().catch(() => ({}));
+          serverError = errData.error || `${response.status} - ${response.statusText}`;
+        } catch (e) {
+          serverError = e?.message || String(e);
         }
+        return "";
+      })();
+
+      // 2. Direct Gemini call (client-side, GEMINI_API_KEY required).
+      // Speed rules:
+      //  - thinking disabled (thinkingBudget 0) on thinking-capable models —
+      //    biggest latency win on Gemini 3.x (lite models must NOT get it: 400)
+      //  - short per-model timeout + global deadline so hanging requests can't stack
+      //  - ONE quick retry only for fast 429/5xx answers (temporary spikes);
+      //    never after a timeout — a hung request would just hang again.
+      const directPromise = GEMINI_API_KEY
+        ? (async () => {
+            const chatCandidateModels = [
+              "gemini-3.5-flash-lite",
+              "gemini-flash-lite-latest",
+              "gemini-3.8-flash",
+              "gemini-3.6-flash",
+              "gemini-3.5-flash",
+            ];
+            let sawBusyResponse = false;
+            let attempts = 0;
+
+            const callModel = async (model, timeoutMs) => {
+              const modelController = new AbortController();
+              const modelTimeout = setTimeout(() => modelController.abort(), timeoutMs);
+              try {
+                const response = await fetch(
+                  `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    signal: modelController.signal,
+                    body: JSON.stringify({
+                      systemInstruction: {
+                        parts: [{ text: `${medConfig.systemMessage}\n\n${languageInstruction}` }],
+                      },
+                      contents: geminiContents,
+                      generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 250,
+                        // Lite models are NON-thinking models — sending thinkingConfig
+                        // makes them return 400 INVALID_ARGUMENT (verified live).
+                        ...(/lite/i.test(model)
+                          ? {}
+                          : { thinkingConfig: { thinkingBudget: 0 } }),
+                      },
+                    }),
+                  }
+                );
+                if (response.ok) {
+                  const data = await response.json();
+                  const text = data.candidates?.[0]?.content?.parts
+                    ?.map((p) => p.text || "")
+                    .join("")
+                    .trim();
+                  if (text) return text;
+                  directError = "Empty response from model";
+                  return "";
+                }
+                const errorText = await response.text();
+                directError = `${response.status} - ${errorText}`;
+                if (response.status === 429 || response.status >= 500) sawBusyResponse = true;
+                console.warn(`Chat model "${model}" returned ${response.status} — trying next model...`);
+                return "";
+              } catch (e) {
+                directError =
+                  e?.name === "AbortError"
+                    ? `timeout after ${timeoutMs}ms on ${model}`
+                    : e?.message || String(e);
+                console.warn(`Chat model "${model}": ${directError}`);
+                return "";
+              } finally {
+                clearTimeout(modelTimeout);
+              }
+            };
+
+            for (const model of chatCandidateModels) {
+              if (timeLeft() < 2500) break; // global deadline too close — stop
+              const timeout = attempts === 0 ? 7000 : 4000;
+              const text = await callModel(model, Math.min(timeout, timeLeft()));
+              attempts++;
+              if (text) return text;
+            }
+
+            if (sawBusyResponse && timeLeft() > 3500) {
+              await new Promise((r) => setTimeout(r, 600)); // brief spike pause
+              return callModel(chatCandidateModels[0], Math.min(6000, timeLeft()));
+            }
+            return "";
+          })()
+        : null;
+
+      // First success wins. An empty string becomes a rejection so we keep
+      // waiting for the other path instead of settling on a failed one.
+      const settle = (p) => p.then((t) => (t ? Promise.resolve(t) : Promise.reject(new Error("empty"))));
+      const runners = [settle(serverPromise)];
+      if (directPromise) runners.push(settle(directPromise));
+      try {
+        aiText = await Promise.any(runners);
+      } catch {
+        aiText = ""; // every path failed — fall through to the error below
       }
+      lastChatError = directError || serverError || lastChatError || "No response";
 
       if (!aiText) throw new Error(`Gemini API Error: ${lastChatError}`);
 
@@ -817,9 +1000,15 @@ const Chat = () => {
         { text: displayText, sender: "ai", timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) },
       ]);
 
-      // Speak the Hinglish reply with the sweet Hindi female voice for
-      // correct pronunciation (speakText also strips emojis & fixes names)
-      speakText(aiText, "hi");
+      // Speak the reply in the SAME language it was written in.
+      // English replies use an English voice; Hinglish replies use the Hindi voice.
+      const replyStart = aiText.trim().slice(0, 60);
+      // If the reply contains Devanagari chars or common Hindi words in Roman script,
+      // treat it as Hinglish; otherwise treat it as English.
+      const hasDevanagari = /[ऀ-ॿ]/.test(replyStart);
+      const hasHindiWords = /(kya|kaise|kaisi|kaun|kyun|kab|kahan|koi|kuchh|batao|bataiye|haan|nahi|hi|ka|ki|kon|mera|tera|hum|hamare|yahan|wahan|hai|ho|hain|karna|karo|chahiye|hoge|raha|hui|rahi|bole|batayein|jaanna|jaana|puchho|puchiye|samjha|samjhein)/i.test(replyStart);
+      const isEnglishReply = !hasDevanagari && !hasHindiWords;
+      speakText(aiText, isEnglishReply ? "en" : "hi");
     } catch (error) {
       console.error("API Error:", error);
       const errorMessage = `Oops! Main samajh nahi payi, ek baar fir se bolo na... 😅`;

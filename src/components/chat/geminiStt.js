@@ -12,11 +12,11 @@ const GEMINI_API_KEY =
 
 const GEMINI_MODEL =
   typeof process !== "undefined" && process.env
-    ? process.env.VITE_GEMINI_MODEL || "gemini-3.5-flash"
-    : import.meta.env ? import.meta.env.VITE_GEMINI_MODEL || "gemini-3.5-flash" : "gemini-3.5-flash";
+    ? process.env.VITE_GEMINI_MODEL || "gemini-3.5-transcribe"
+    : import.meta.env ? import.meta.env.VITE_GEMINI_MODEL || "gemini-3.5-transcribe" : "gemini-3.5-transcribe";
 
-// Current active STT model
-const FALLBACK_MODEL = "gemini-3.5-flash";
+// Current active STT model — the dedicated Gemini 3.5 Transcribe model
+const FALLBACK_MODEL = "gemini-3.5-transcribe";
 
 // Instructed very explicitly so the model acts as a transcriptor, not a chatbot.
 const TRANSCRIBE_PROMPT = `
@@ -188,18 +188,19 @@ export const transcribeWithGemini = async (blob) => {
 
   // Normalize model name helper
   const normalizeModel = (m) => {
-    if (!m) return "gemini-3.5-flash";
-    if (m === "gemini-3.5") return "gemini-3.5-flash";
+    if (!m) return "gemini-3.5-transcribe";
+    if (m === "gemini-3.5") return "gemini-3.5-transcribe";
     if (m === "gemini-3.6") return "gemini-3.6-flash";
     if (m === "gemini-3.7") return "gemini-3.7-flash";
     return m;
   };
 
-  // If the initial model fails, retry with verified active models
+  // Gemini 3.5 Transcribe is the dedicated transcription model (accurate
+  // Hinglish/Hindi with language auto-detection) — try it first, then fall
+  // back to general flash models if it rejects the request format.
   const candidateModels = [
+    "gemini-3.5-transcribe",
     "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-flash-lite-latest",
     "gemini-3.5-flash",
   ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 

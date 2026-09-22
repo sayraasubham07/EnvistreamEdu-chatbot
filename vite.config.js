@@ -52,6 +52,10 @@ export default defineConfig(({ mode }) => {
         ],
         server: {
             port: 4000,
+            // Never silently drift to 4001/4002/... when the port is busy.
+            // A stale tab pointing at a dead drifted port causes
+            // ERR_CONNECTION_REFUSED on /api/chat — fail loudly instead.
+            strictPort: true,
             open: true,
             headers: {
                 'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
