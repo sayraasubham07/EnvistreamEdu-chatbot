@@ -1,9 +1,4 @@
-// ---- Gemini Speech-to-Text (AI mic) ----
-// Chrome's free Web Speech recognizer cannot learn custom words, so it keeps
-// mishearing the brand "Envistream EduSkill" differently on every try (fast,
-// slow, odd pace...). When VITE_GEMINI_API_KEY is configured, we record the
-// mic audio with the modern MediaRecorder and send it to the Gemini API, which
-// transcribes Hindi/Hinglish accurately and keeps English brand words correct.
+
 
 const GEMINI_API_KEY =
   typeof process !== "undefined" && process.env

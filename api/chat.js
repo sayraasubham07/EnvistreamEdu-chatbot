@@ -29,8 +29,7 @@ export default async function handler(req, res) {
     // Client only waits ~7s for us — if the chain has already spent 4s,
     // answer immediately instead of outliving the client's timeout.
     if (Date.now() - chainStart > 4000) break;
-    // Per-model timeout so one hanging model can't stall the whole chain
-    // (this was the main cause of slow / failed replies).
+   
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4500);
     try {

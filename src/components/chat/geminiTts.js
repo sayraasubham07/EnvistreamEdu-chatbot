@@ -1,9 +1,4 @@
-// ---- Gemini Neural Text-to-Speech (sweet female voice) ----
-// Sayraa's English greetings & replies are spoken with Google's neural TTS
-// voices (Gemini 2.5 Flash TTS -> Gemini 2.5 Pro TTS) instead of the robotic
-// browser SAPI voices, so the greeting sounds like a sweet young woman instead
-// of the default/male system voice. The caller falls back to the browser Web
-// Speech API whenever this returns false (no key, network error, autoplay...).
+
 
 const TTS_API_KEY =
   typeof process !== "undefined" && process.env
